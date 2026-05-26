@@ -1,0 +1,39 @@
+name: glpi
+services:
+  db:
+    image: "mysql:9.6.0"
+    restart: "unless-stopped"
+    volumes:
+       - ./storage/mysql:/var/lib/mysql
+    environment:
+      MYSQL_RANDOM_ROOT_PASSWORD: "yes"
+      MYSQL_DATABASE: ${GLPI_DB_NAME}
+      MYSQL_USER: ${GLPI_DB_USER}
+      MYSQL_PASSWORD: ${GLPI_DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "${GLPI_DB_USER}", "-p${GLPI_DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  glpi:
+    image: "glpi/glpi:11.0.7"
+    dns:
+       - {IP_DNS}
+    restart: "unless-stopped"
+    volumes:
+       - ./storage/glpi:/var/www/glpi
+       - ./storage/glpi_plugins:/var/glpi/marketplace
+       - /var/pj/files:/var/glpi/files
+       - ./storage/glpi_config/ldap.conf:/etc/ldap/ldap.conf:ro
+       - ./storage/glpi_config:/var/glpi/config
+       - ./storage/certs/certificat-ca.crt:/etc/ssl/certs/certificat-ca.crt:ro
+
+
+#    env_file: .env
+    depends_on:
+        db:
+          condition: service_healthy
+
+    ports:
+      - "80:80"
